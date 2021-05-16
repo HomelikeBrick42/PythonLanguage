@@ -8,11 +8,11 @@ def chr_to_int(char: chr, base: int) -> int:
         return int(char) - int('0')
     elif 'a' <= char <= 'z':
         return int(char) - int('a') + 10
-    elif 'a' <= char <= 'z':
+    elif 'A' <= char <= 'Z':
         if base > 36:
             pass
         else:
-            return int(char) - int('a') + 10
+            return int(char) - int('A') + 10
 
     raise NotImplementedError  # TODO: Char to int
 
