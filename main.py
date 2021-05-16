@@ -1,4 +1,4 @@
-from typing import Union, Any, Generator
+from typing import Union, Any, Generator, Dict
 
 from enum import Enum, auto
 
@@ -26,6 +26,9 @@ class TokenKind(Enum):
     Float = auto()
     String = auto()
 
+    Period = auto()
+    Comma = auto()
+
 
 class Token:
     Token: str = 'Token'  # TODO: Change type from str to TypeAlias in python 3.10
@@ -51,6 +54,10 @@ class Token:
 
 class Lexer:
     Lexer: str = 'Lexer'  # TODO: Change type from str to TypeAlias in python 3.10
+    CharToTokenKind: Dict[chr, TokenKind] = {
+        '.': TokenKind.Period,
+        ',': TokenKind.Comma,
+    }
 
     def __init__(self: Lexer, source: str) -> None:
         self.source: str = source
@@ -101,16 +108,18 @@ class Lexer:
                     raise NotImplementedError  # TODO: Slash character
             elif self._current.isalpha() or self._current == '_':
                 yield from self._lex_identifier(start, start_column, start_line)
-            elif self._current.isdigit() or self._current == '.':
-                if self._current == '.' and not self._peek(1).isdigit():
-                    raise NotImplementedError  # TODO: Period character
-                else:
-                    yield from self._lex_number(start, start_column, start_line)
+            elif self._current.isdigit() or (self._current == '.' and self._peek(1).isdigit()):
+                yield from self._lex_number(start, start_column, start_line)
             elif self._current == '\"':
                 raise NotImplementedError  # TODO: String literal
             else:
-                self._next_chr()
-                yield Token(TokenKind.Invalid, self.source, start, start_line, start_column, 1, "Unknown character")
+                if self._current in self.CharToTokenKind:
+                    char: chr = self._current
+                    self._next_chr()
+                    yield Token(self.CharToTokenKind[char], self.source, start, start_line, start_column, 1)
+                else:
+                    self._next_chr()
+                    yield Token(TokenKind.Invalid, self.source, start, start_line, start_column, 1, "Unknown character")
 
         while True:
             yield Token(TokenKind.EndOfFile, self.source, self.position, self.line, self.column, 0)
