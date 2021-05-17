@@ -1,5 +1,6 @@
 printf :: (fmt: ^u8, args: ..) -> s32 #foreign "printf" #call "cdecl";
 
 main :: () -> void {
-    printf("Hello\n");
+    number: s32 = 1 + 2 * 3;
+    printf("Hello the number is %d\n", number);
 }
