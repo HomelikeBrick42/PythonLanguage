@@ -1,4 +1,4 @@
-from typing import Union, Any, Generator, Dict
+from typing import Union, Any, Generator, Dict, Tuple
 
 from enum import Enum, auto
 
@@ -28,6 +28,39 @@ class TokenKind(Enum):
 
     Period = auto()
     Comma = auto()
+    Hash = auto()
+    Caret = auto()
+    Colon = auto()
+    Semicolon = auto()
+    RightArrow = auto()
+    PeriodPeriod = auto()
+
+    OpenParentheses = auto()
+    CloseParentheses = auto()
+    OpenSquareBracket = auto()
+    CloseSquareBracket = auto()
+    OpenBracket = auto()
+    CloseBracket = auto()
+
+    Plus = auto()
+    Minus = auto()
+    Asterisk = auto()
+    Slash = auto()
+    Percent = auto()
+    Equals = auto()
+    ExclamationMark = auto()
+    LessThan = auto()
+    GreaterThan = auto()
+
+    PlusEquals = auto()
+    MinusEquals = auto()
+    AsteriskEquals = auto()
+    SlashEquals = auto()
+    PercentEquals = auto()
+    EqualsEquals = auto()
+    ExclamationMarkEquals = auto()
+    LessThanEquals = auto()
+    GreaterThanEquals = auto()
 
 
 class Token:
@@ -57,6 +90,41 @@ class Lexer:
     CharToTokenKind: Dict[chr, TokenKind] = {
         '.': TokenKind.Period,
         ',': TokenKind.Comma,
+        '#': TokenKind.Hash,
+        '^': TokenKind.Caret,
+        ':': TokenKind.Colon,
+        ';': TokenKind.Semicolon,
+
+        '(': TokenKind.OpenParentheses,
+        ')': TokenKind.CloseParentheses,
+        '[': TokenKind.OpenSquareBracket,
+        ']': TokenKind.CloseSquareBracket,
+        '{': TokenKind.OpenBracket,
+        '}': TokenKind.CloseBracket,
+
+        '+': TokenKind.Plus,
+        '-': TokenKind.Minus,
+        '*': TokenKind.Asterisk,
+        '/': TokenKind.Slash,
+        '%': TokenKind.Percent,
+        '=': TokenKind.Equals,
+        '!': TokenKind.ExclamationMark,
+        '<': TokenKind.LessThan,
+        '>': TokenKind.GreaterThan,
+    }
+
+    DoubleCharToTokenKind: Dict[Tuple[chr, chr], TokenKind] = {
+        ('+', '='): TokenKind.PlusEquals,
+        ('-', '='): TokenKind.MinusEquals,
+        ('*', '='): TokenKind.AsteriskEquals,
+        ('/', '='): TokenKind.SlashEquals,
+        ('%', '='): TokenKind.PercentEquals,
+        ('=', '='): TokenKind.EqualsEquals,
+        ('!', '='): TokenKind.ExclamationMarkEquals,
+        ('<', '='): TokenKind.LessThanEquals,
+        ('>', '='): TokenKind.GreaterThanEquals,
+        ('.', '.'): TokenKind.PeriodPeriod,
+        ('-', '>'): TokenKind.RightArrow,
     }
 
     def __init__(self: Lexer, source: str) -> None:
@@ -96,24 +164,24 @@ class Lexer:
 
             if self._current.isspace():
                 yield from self._lex_whitespace(start, start_column, start_line)
-            elif self._current == '/':
-                self._next_chr()
-                if self._current == '/':
-                    self._next_chr()
-                    raise NotImplementedError  # TODO: Single line comment
-                if self._current == '*':
-                    self._next_chr()
-                    raise NotImplementedError  # TODO: Multi line comment
-                else:
-                    raise NotImplementedError  # TODO: Slash character
+            elif self._current == '/' and self._peek(1) == '/':
+                raise NotImplementedError  # TODO: Single line comment
+            elif self._current == '/' and self._peek(1) == '*':
+                raise NotImplementedError  # TODO: Block comment
             elif self._current.isalpha() or self._current == '_':
                 yield from self._lex_identifier(start, start_column, start_line)
             elif self._current.isdigit() or (self._current == '.' and self._peek(1).isdigit()):
                 yield from self._lex_number(start, start_column, start_line)
             elif self._current == '\"':
-                raise NotImplementedError  # TODO: String literal
+                yield from self._lex_string(start, start_column, start_line)
             else:
-                if self._current in self.CharToTokenKind:
+                if (self._current, self._peek(1)) in self.DoubleCharToTokenKind:
+                    char1: chr = self._current
+                    self._next_chr()
+                    char2: chr = self._current
+                    self._next_chr()
+                    yield Token(self.DoubleCharToTokenKind[(char1, char2)], self.source, start, start_line, start_column, 2)
+                elif self._current in self.CharToTokenKind:
                     char: chr = self._current
                     self._next_chr()
                     yield Token(self.CharToTokenKind[char], self.source, start, start_line, start_column, 1)
@@ -123,6 +191,59 @@ class Lexer:
 
         while True:
             yield Token(TokenKind.EndOfFile, self.source, self.position, self.line, self.column, 0)
+
+    def _lex_string(self: Lexer, start: int, start_column: int, start_line: int) -> Generator[Token, None, None]:
+        length: int = 0
+
+        self._next_chr()
+        length += 1
+
+        value: str = ""
+        while self._current != '\"' and self._current != '\0':
+            if self._current == '\\':
+                self._next_chr()
+                length += 1
+
+                if self._current == '0':
+                    value += '\0'
+                    self._next_chr()
+                    length += 1
+                elif self._current == 'n' or self._current == 'N':
+                    value += '\n'
+                    self._next_chr()
+                    length += 1
+                elif self._current == 'r' or self._current == 'R':
+                    value += '\r'
+                    self._next_chr()
+                    length += 1
+                elif self._current == '\\':
+                    value += '\\'
+                    self._next_chr()
+                    length += 1
+                elif self._current == '\"':
+                    value += '\"'
+                    self._next_chr()
+                    length += 1
+                elif self._current == '\'':
+                    value += '\''
+                    self._next_chr()
+                    length += 1
+                else:
+                    yield Token(TokenKind.Invalid, self.source, self.position, self.line, self.column, 1,
+                                "Unknown escaped string literal")
+                    value += self._current
+                    self._next_chr()
+                    length += 1
+            else:
+                value += self._current
+                self._next_chr()
+                length += 1
+        if self._current == '\0':
+            yield Token(TokenKind.Invalid, self.source, start, start_line, start_column, 1,
+                        "String literal is unclosed at end of file")
+
+        self._next_chr()
+        yield Token(TokenKind.String, self.source, start, start_line, start_column, length, value)
 
     def _lex_whitespace(self: Lexer, start: int, start_column: int, start_line: int) -> Generator[Token, None, None]:
         length: int = 0

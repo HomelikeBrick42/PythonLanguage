@@ -1,6 +1,5 @@
+printf :: (fmt: ^u8, args: ..) -> s32 #foreign "printf" #call "cdecl";
 
-thIs_iS_An_iDeNtiFiEr
-
-hello + 125.3
-
-.,
+main :: () -> void {
+    printf("Hello\n");
+}
